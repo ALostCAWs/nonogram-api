@@ -2,8 +2,9 @@
 import { Router } from "express";
 const router = Router();
 /* Functions */
-import { importGame } from "../public/src/ts/gameImportExport/importGame";
-import { checkPuzzleNotBlank, checkPuzzleHasOneSolution, checkPuzzleRectangular } from "../public/src/ts/gameImportExport/validatePuzzle";
+import { importGame } from "../src/ts/gameImportExport/importPuzzle";
+import { checkPuzzleNotBlank, checkPuzzleHasOneSolution, checkPuzzleRectangular } from "../src/ts/gameImportExport/validatePuzzle";
+import { calculateDifficulty } from "../src/ts/gameImportExport/calculateDifficulty";
 /* ---- End */
 
 /* GET puzzles listing. */
@@ -15,14 +16,27 @@ import { checkPuzzleNotBlank, checkPuzzleHasOneSolution, checkPuzzleRectangular 
 // Gets a specific puzzle
 
 let puzzles = new Map();
-let starterPuzzle = {
-  puzzleCode: '5|1111101100010100110001000',
-  name: 'Hatsune Miku',
-  author: 'Hatsune Miku',
-  difficultyRating: 6.89
+let starterPuzzle1_code = '5|1111101100010100110001000';
+let starterPuzzle1_difficulty = calculateDifficulty(importGame(starterPuzzle1_code));
+let starterPuzzle1 = {
+  puzzleId: '1',
+  puzzleCode: starterPuzzle1_code,
+  puzzleName: 'First Puzzle',
+  author: 'First Puzzle',
+  difficultyRating: starterPuzzle1_difficulty
 };
-puzzles.set('1', starterPuzzle);
-puzzles.set('2', starterPuzzle);
+puzzles.set(starterPuzzle1.puzzleId, starterPuzzle1);
+
+let starterPuzzle2_code = '15|000000000000000000101000000000010000010000000101010101000000100111001000000100010001000000011010110000000010010010000000001101100000000000000000000000000010000000000000000000000000000010101010101000000000000000000000000000000';
+let starterPuzzle2_difficulty = calculateDifficulty(importGame(starterPuzzle2_code));
+let starterPuzzle2 = {
+  puzzleId: '2',
+  puzzleCode: starterPuzzle2_code,
+  puzzleName: 'Butterfly',
+  author: 'BugGuy',
+  difficultyRating: starterPuzzle2_difficulty
+};
+puzzles.set(starterPuzzle2.puzzleId, starterPuzzle2);
 
 router.get('/', (req, res, next) => {
   if (!puzzles.size) {
@@ -42,8 +56,9 @@ router.get('/:puzzleId', (req, res, next) => {
 });
 
 router.post('/create', (req, res, next) => {
+  // Get user-input puzzle info from request body
   const puzzleCode: string = req.body.puzzleCode;
-  const name: string = req.body.name;
+  const puzzleName: string = req.body.puzzleName;
   const author: string = req.body.author;
   const puzzleSolution: boolean[][] = importGame(puzzleCode);
 
@@ -56,28 +71,31 @@ router.post('/create', (req, res, next) => {
   if (!checkPuzzleRectangular(puzzleSolution)) {
     res.status(400).send('irregular puzzle');
   }
+
+  // Generate the auto-generated puzzle info not found in the request body
+  // const id = // generate puzzleId ( string )
+  const puzzleId = '3';
+  const difficultyRating = calculateDifficulty(puzzleSolution);
+
   // Save puzzle
-  // auto-gen Id, difficulty, author
-  // input name of puzzle
   let puzzle = {
+    puzzleId: puzzleId,
     puzzleCode: puzzleCode,
-    name: name,
+    puzzleName: puzzleName,
     author: author,
-    difficultyRating: 2.45
+    difficultyRating: difficultyRating
   };
-  puzzles.set('3', puzzle);
+  //puzzles.set(id, puzzle);
+  puzzles.set(puzzleId, puzzle);
+
   res.status(200).send('puzzle created');
 });
 
-router.post('/:puzzleId', (req, res, next) => {
-  // how to get enough info
-  // need Id to find
-  // need name of puzzle & puzzleCode
-  // auto-gen difficulty & author
-
-  const puzzleId: string = req.params['puzzleId'];
+router.post('/update', (req, res, next) => {
+  // Get user-inputted puzzle info from request body
+  const puzzleId: string = req.body.puzzleId;
   const puzzleCode: string = req.body.puzzleCode;
-  const name: string = req.body.name;
+  const puzzleName: string = req.body.puzzleName;
   const author: string = req.body.author;
   const puzzleSolution: boolean[][] = importGame(puzzleCode);
 
@@ -93,14 +111,20 @@ router.post('/:puzzleId', (req, res, next) => {
   if (!checkPuzzleRectangular(puzzleSolution)) {
     res.status(400).send('irregular puzzle');
   }
+
+  // Generate the auto-generated puzzle info not found in the request body
+  const difficultyRating = calculateDifficulty(puzzleSolution);
+
   // Update puzzle
   let puzzle = {
+    puzzleId: puzzleId,
     puzzleCode: puzzleCode,
-    name: name,
+    puzzleName: puzzleName,
     author: author,
-    difficultyRating: 5.32
+    difficultyRating: difficultyRating
   };
   puzzles.set(puzzleId, puzzle);
+
   res.status(200).send('puzzle updated');
 });
 
@@ -112,7 +136,7 @@ router.get('/delete/:puzzleId', (req, res, next) => {
   }
   // Remove puzzle
   puzzles.delete(puzzleId);
-  res.send(puzzles);
+  res.send('puzzle deleted');
 });
 
 export { router as PuzzlesRouter };
